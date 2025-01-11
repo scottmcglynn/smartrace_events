@@ -183,7 +183,7 @@ class GoveeBluetoothService {
       await Future.delayed(const Duration(seconds: 10));
       
       if (_isScanning) {
-        scanSubscription?.cancel();
+        scanSubscription.cancel();
         _isScanning = false;
       }
     } catch (e) {
