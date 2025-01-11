@@ -2,7 +2,6 @@
 import 'dart:async';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import '../models/weather_event.dart';
-import 'audio_service.dart';
 
 class GoveeBluetoothService {
   static final GoveeBluetoothService _instance = GoveeBluetoothService._internal();
@@ -26,6 +25,7 @@ class GoveeBluetoothService {
 
   GoveeBluetoothService._internal() {
     _initializeConnection();
+    FlutterBluePlus.setLogLevel(LogLevel.none);
   }
 
   Future<void> _initializeConnection() async {
