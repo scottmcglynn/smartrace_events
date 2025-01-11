@@ -16,8 +16,8 @@ class WeatherControlButtons extends StatelessWidget {
 
   // Helper method to call both services
   Future<void> _handleBothServices(WeatherEvent event, String status) async {
-    await goveeService.handleEvent(event, status);
     await goveeBluetoothService.handleWeatherEvent(event, status);
+    await goveeService.handleEvent(event, status);
   }
 
   @override
