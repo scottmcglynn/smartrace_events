@@ -1,7 +1,8 @@
 // lib/services/govee_bluetooth_service.dart
 
 import 'dart:async';
-import 'package:flutter_blue/flutter_blue.dart';
+import 'dart:io';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import '../models/weather_event.dart';
 import 'audio_service.dart';
 
@@ -14,15 +15,13 @@ class GoveeBluetoothService {
   static const String GOVEE_CHARACTERISTIC_UUID = "00010203-0405-0607-0809-0a0b0c0d2b11";
   static const String DEVICE_NAME_PATTERN = "ihoment_H613E";
   
-  final FlutterBlue _flutterBlue = FlutterBlue.instance;
-  final AudioService _audioService = AudioService();
-  
   BluetoothDevice? _targetDevice;
   BluetoothCharacteristic? _writeCharacteristic;
   bool _isConnected = false;
   bool _isScanning = false;
   bool _isReconnecting = false;
   StreamSubscription? _connectionSubscription;
+  final AudioService _audioService = AudioService();
   
   String _trackevent = 'events.weather_change';
   String _trackstatus = 'dry';
@@ -33,16 +32,23 @@ class GoveeBluetoothService {
 
   Future<void> _initializeConnection() async {
     print('Initializing Bluetooth connection...');
-    await _connectToDevice();
-    if (!_isConnected) {
-      Timer.periodic(const Duration(seconds: 30), (timer) async {
-        if (!_isConnected) {
-          print('Attempting to reconnect...');
-          await _connectToDevice();
-        } else {
-          timer.cancel();
-        }
-      });
+    try {
+      // Initialize FlutterBluePlus
+      await FlutterBluePlus.turnOn();
+      await _connectToDevice();
+      
+      if (!_isConnected) {
+        Timer.periodic(const Duration(seconds: 30), (timer) async {
+          if (!_isConnected) {
+            print('Attempting to reconnect...');
+            await _connectToDevice();
+          } else {
+            timer.cancel();
+          }
+        });
+      }
+    } catch (e) {
+      print('Error initializing Bluetooth: $e');
     }
   }
 
@@ -74,14 +80,14 @@ class GoveeBluetoothService {
       }
 
       if (!reconnected && attempts < maxAttempts) {
-        await Future.delayed(Duration(seconds: attempts * 2)); // Exponential backoff
+        await Future.delayed(Duration(seconds: attempts * 2));
       }
     }
 
     _isReconnecting = false;
     if (!reconnected) {
       print('All reconnection attempts failed');
-      _connectToDevice(); // Fallback to scanning for the device
+      _connectToDevice();
     }
   }
 
@@ -89,8 +95,9 @@ class GoveeBluetoothService {
     if (_targetDevice == null) return false;
     
     try {
-      List<BluetoothDevice> connectedDevices = await _flutterBlue.connectedDevices;
-      bool isStillConnected = connectedDevices.contains(_targetDevice);
+      // In flutter_blue_plus, we can check the connection state directly
+      final state = await _targetDevice!.connectionState.first;
+      bool isStillConnected = state == BluetoothConnectionState.connected;
       
       if (!isStillConnected) {
         _isConnected = false;
@@ -108,17 +115,18 @@ class GoveeBluetoothService {
 
   Future<bool> _reconnectToDevice() async {
     if (_targetDevice == null) return false;
-    print('Attempting to reconnect to device: ${_targetDevice!.name}');
+    print('Attempting to reconnect to device: ${_targetDevice!.platformName}');
     
     try {
-      await _targetDevice!.connect(timeout: const Duration(seconds: 15), autoConnect: false);
+      await _targetDevice!.connect(timeout: const Duration(seconds: 15));
+      await Future.delayed(const Duration(milliseconds: 1000)); // Short delay after connection
       
       final services = await _targetDevice!.discoverServices();
       
       for (var service in services) {
-        if (service.uuid.toString() == GOVEE_SERVICE_UUID) {
+        if (service.uuid.str == GOVEE_SERVICE_UUID) {
           for (var characteristic in service.characteristics) {
-            if (characteristic.uuid.toString() == GOVEE_CHARACTERISTIC_UUID) {
+            if (characteristic.uuid.str == GOVEE_CHARACTERISTIC_UUID) {
               _writeCharacteristic = characteristic;
               _isConnected = true;
               _setupDeviceStateListener(_targetDevice!);
@@ -130,6 +138,7 @@ class GoveeBluetoothService {
       }
       
       print('Required service/characteristic not found');
+      await _targetDevice!.disconnect();
       _isConnected = false;
       _writeCharacteristic = null;
       return false;
@@ -156,21 +165,24 @@ class GoveeBluetoothService {
     StreamSubscription? scanSubscription;
     
     try {
-      scanSubscription = _flutterBlue.scanResults.listen((results) async {
+      // Clear scan results before starting new scan
+      
+      scanSubscription = FlutterBluePlus.scanResults.listen((results) async {
         if (!_isConnected) {
           for (ScanResult result in results) {
-            if (attemptedDevices.contains(result.device.id.toString())) {
+            if (attemptedDevices.contains(result.device.remoteId.str)) {
               continue;
             }
-            if (!result.device.name.contains(DEVICE_NAME_PATTERN)) {
+            if (!result.device.platformName.contains(DEVICE_NAME_PATTERN)) {
               continue;
             }
-            attemptedDevices.add(result.device.id.toString());
-            print('Found target device: ${result.device.name} (${result.device.id})');
+            
+            attemptedDevices.add(result.device.remoteId.str);
+            print('Found target device: ${result.device.platformName} (${result.device.remoteId})');
             
             bool isGoveeDevice = await _checkAndConnectGoveeDevice(result.device);
             if (isGoveeDevice) {
-              await _flutterBlue.stopScan();
+              await FlutterBluePlus.stopScan();
               scanSubscription?.cancel();
               _isScanning = false;
               break;
@@ -179,31 +191,38 @@ class GoveeBluetoothService {
         }
       });
 
-      await _flutterBlue.startScan(timeout: const Duration(seconds: 10));
+      await FlutterBluePlus.startScan(
+        timeout: const Duration(seconds: 10),
+        androidUsesFineLocation: false
+      );
+      
       await Future.delayed(const Duration(seconds: 10));
       
       if (_isScanning) {
+        await FlutterBluePlus.stopScan();
         scanSubscription.cancel();
         _isScanning = false;
       }
     } catch (e) {
       print('Error during scan/connect: $e');
       _isScanning = false;
+      await FlutterBluePlus.stopScan();
     }
   }
 
   Future<bool> _checkAndConnectGoveeDevice(BluetoothDevice device) async {
     try {
-      print('Attempting to connect to device: ${device.name} (${device.id})');
-      await device.connect(timeout: const Duration(seconds: 15), autoConnect: false);
+      print('Attempting to connect to device: ${device.platformName} (${device.remoteId})');
+      await device.connect(timeout: const Duration(seconds: 15));
+      await Future.delayed(const Duration(milliseconds: 1000)); // Short delay after connection
       
       print('Connected, discovering services...');
       final services = await device.discoverServices();
       
       for (var service in services) {
-        if (service.uuid.toString() == GOVEE_SERVICE_UUID) {
+        if (service.uuid.str == GOVEE_SERVICE_UUID) {
           for (var characteristic in service.characteristics) {
-            if (characteristic.uuid.toString() == GOVEE_CHARACTERISTIC_UUID) {
+            if (characteristic.uuid.str == GOVEE_CHARACTERISTIC_UUID) {
               _writeCharacteristic = characteristic;
               _targetDevice = device;
               _isConnected = true;
@@ -230,8 +249,9 @@ class GoveeBluetoothService {
 
   void _setupDeviceStateListener(BluetoothDevice device) {
     _connectionSubscription?.cancel();
-    _connectionSubscription = device.state.listen((state) {
-      if (state == BluetoothDeviceState.disconnected) {
+    _connectionSubscription = device.connectionState.listen((state) {
+      print('Connection state changed: $state');
+      if (state == BluetoothConnectionState.disconnected) {
         _handleDisconnection();
       }
     });
@@ -338,7 +358,6 @@ class GoveeBluetoothService {
     }
   }
 
-  // Command generators
   static List<int> commandColor(int r, int g, int b) {
     r = r.clamp(0, 255);
     g = g.clamp(0, 255);
