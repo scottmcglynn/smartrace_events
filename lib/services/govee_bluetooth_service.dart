@@ -401,7 +401,7 @@ class GoveeBluetoothService {
   }
 
   Future<void> _sendCommand(List<int> command) async {
-    print('GoveeBluetoothService: Attempting to send command: ${command.map((e) => '0x${e.toRadixString(16).padLeft(2, '0')}').join(', ')}');
+    // print('GoveeBluetoothService: Attempting to send command: ${command.map((e) => '0x${e.toRadixString(16).padLeft(2, '0')}').join(', ')}');
     
     bool isStillConnected = await _checkConnectionStatus();
     if (!isStillConnected) {
