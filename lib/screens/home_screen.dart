@@ -11,11 +11,11 @@ class HomeScreen extends StatelessWidget {
   final GoveeBluetoothService goveeBluetoothService;
 
   const HomeScreen({
-    Key? key,
+    super.key,
     required this.goveeService,
     required this.serverService,
     required this.goveeBluetoothService,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

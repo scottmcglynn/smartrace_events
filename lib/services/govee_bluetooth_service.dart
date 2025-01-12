@@ -33,25 +33,25 @@ class GoveeBluetoothService {
   }
 
   void _startKeepAliveTimer() {
-    print('Starting keepalive timer');
+    // print('Starting keepalive timer');
     _keepAliveTimer?.cancel();
     _keepAliveTimer = Timer.periodic(const Duration(seconds: 2), (timer) async {
       try {
         bool isConnected = await _checkConnectionStatus();
         if (!isConnected) {
-          print('Device not connected, cancelling keepalive timer');
+          // print('Device not connected, cancelling keepalive timer');
           timer.cancel();
           return;
         }
 
         if (_writeCharacteristic == null) {
-          print('Write characteristic not available, cancelling keepalive timer');
+          // print('Write characteristic not available, cancelling keepalive timer');
           timer.cancel();
           return;
         }
 
         await _sendCommand(commandKeepAlive());
-        print('Keepalive sent at ${DateTime.now()}');
+        // print('Keepalive sent at ${DateTime.now()}');
       } catch (e) {
         print('Error in keepalive timer: $e');
         timer.cancel();
@@ -67,15 +67,23 @@ class GoveeBluetoothService {
 
   Future<void> _initializeConnection() async {
     print('Initializing Bluetooth connection...');
-    try {
-      // Instead of turning on, check the state
-      BluetoothAdapterState state = await FlutterBluePlus.adapterState.first;
-      
-      if (state != BluetoothAdapterState.on) {
-        print('Bluetooth is not enabled. Please enable Bluetooth in System Settings.');
-        return;
-      }
-      
+ try {
+    // Wait for Bluetooth to initialize and stabilize
+    await FlutterBluePlus.adapterState
+      .where((state) => state != BluetoothAdapterState.unknown)
+      .first;
+    
+    print('Bluetooth adapter state stabilized');
+    
+    // Now check if Bluetooth is on
+    BluetoothAdapterState state = await FlutterBluePlus.adapterState.first;
+    if (state != BluetoothAdapterState.on) {
+      print('Bluetooth is not enabled. Please enable Bluetooth in System Settings.');
+      return;
+    }
+    
+    // Add a small delay to ensure the adapter is fully ready
+    await Future.delayed(const Duration(milliseconds: 500));
       await _connectToDevice();
       
       if (!_isConnected) {
@@ -111,12 +119,12 @@ class GoveeBluetoothService {
 
     while (!reconnected && attempts < maxAttempts) {
       attempts++;
-      print('Reconnection attempt $attempts of $maxAttempts');
+      // print('Reconnection attempt $attempts of $maxAttempts');
       
       try {
         reconnected = await _reconnectToDevice();
         if (reconnected) {
-          print('Reconnection successful');
+          // print('Reconnection successful');
           _isConnected = true;
           break;
         }
@@ -161,7 +169,7 @@ class GoveeBluetoothService {
 
   Future<bool> _reconnectToDevice() async {
     if (_targetDevice == null) return false;
-    print('Attempting to reconnect to device: ${_targetDevice!.platformName}');
+    // print('Attempting to reconnect to device: ${_targetDevice!.platformName}');
     
     try {
       await _targetDevice!.connect(timeout: const Duration(seconds: 15));
@@ -183,7 +191,7 @@ class GoveeBluetoothService {
       if (targetChar.properties.notify) {
         await targetChar.setNotifyValue(true);
         targetChar.onValueReceived.listen((value) {
-          print('Received notification from device');
+          // print('Received notification from device');
         });
       }
 
@@ -206,14 +214,14 @@ class GoveeBluetoothService {
   }
 
   Future<void> _connectToDevice() async {
-    print('Starting Bluetooth connection process...');
+    // print('Starting Bluetooth connection process...');
     if (_isConnected || _isScanning) {
-      print('Already connected or scanning, skipping connection process');
+      // print('Already connected or scanning, skipping connection process');
       return;
     }
 
     _isScanning = true;
-    print('Starting scan for Govee device...');
+    // print('Starting scan for Govee device...');
     
     Set<String> attemptedDevices = {};
     StreamSubscription? scanSubscription;
@@ -233,7 +241,7 @@ class GoveeBluetoothService {
             }
             
             attemptedDevices.add(result.device.remoteId.str);
-            print('Found target device: ${result.device.platformName} (${result.device.remoteId})');
+            // print('Found target device: ${result.device.platformName} (${result.device.remoteId})');
             
             bool isGoveeDevice = await _checkAndConnectGoveeDevice(result.device);
             if (isGoveeDevice) {
@@ -267,19 +275,19 @@ class GoveeBluetoothService {
 
   Future<bool> _checkAndConnectGoveeDevice(BluetoothDevice device) async {
     try {
-      print('Attempting to connect to device: ${device.platformName} (${device.remoteId})');
+      // print('Attempting to connect to device: ${device.platformName} (${device.remoteId})');
       
       await device.connect(timeout: const Duration(seconds: 15), mtu: 23);
       print('Basic connection established');
       
-      try {
-        await device.createBond();
-        print('Bond created with device');
-      } catch (e) {
-        print('Bond creation not supported or failed: $e');
-      }
+      // try {
+      //   await device.createBond();
+      //   print('Bond created with device');
+      // } catch (e) {
+      //   print('Bond creation not supported or failed: $e');
+      // }
       
-      print('Discovering target service...');
+      // print('Discovering target service...');
       BluetoothService? targetService;
       List<BluetoothService> services = await device.discoverServices();
       targetService = services.cast<BluetoothService?>().firstWhere(
@@ -293,7 +301,7 @@ class GoveeBluetoothService {
         return false;
       }
 
-      print('Found target service, getting characteristics...');
+      // print('Found target service, getting characteristics...');
       
       // Get both characteristics
       BluetoothCharacteristic? writeChar = targetService.characteristics.cast<BluetoothCharacteristic?>().firstWhere(
@@ -312,16 +320,16 @@ class GoveeBluetoothService {
         return false;
       }
 
-      print('Found characteristics, setting up connection...');
+      // print('Found characteristics, setting up connection...');
 
       // Set up notifications on the notification characteristic
       if (notifyChar != null && notifyChar.properties.notify) {
-        print('Setting up notifications on 2b10 characteristic...');
+        // print('Setting up notifications on 2b10 characteristic...');
         try {
           await notifyChar.setNotifyValue(true);
           notifyChar.lastValueStream.listen(
             (value) {
-              print('2b10 Notification received: ${value.map((e) => '0x${e.toRadixString(16).padLeft(2, '0')}').join(', ')}');
+              // print('2b10 Notification received: ${value.map((e) => '0x${e.toRadixString(16).padLeft(2, '0')}').join(', ')}');
             },
             onError: (error) {
               print('2b10 Notification error: $error');
@@ -336,12 +344,12 @@ class GoveeBluetoothService {
 
       // Set up notifications on the write characteristic if it supports it
       if (writeChar.properties.notify) {
-        print('Setting up notifications on write characteristic...');
+        // print('Setting up notifications on write characteristic...');
         try {
           await writeChar.setNotifyValue(true);
           writeChar.lastValueStream.listen(
             (value) {
-              print('Write char notification: ${value.map((e) => '0x${e.toRadixString(16).padLeft(2, '0')}').join(', ')}');
+              // print('Write char notification: ${value.map((e) => '0x${e.toRadixString(16).padLeft(2, '0')}').join(', ')}');
             },
             onError: (error) {
               print('Write char notification error: $error');
@@ -364,7 +372,7 @@ class GoveeBluetoothService {
       // Start keepalive timer after successful connection
       _startKeepAliveTimer();
       
-      print('Device setup completed successfully');
+      // print('Device setup completed successfully');
       return true;
 
     } catch (e) {
@@ -381,11 +389,11 @@ class GoveeBluetoothService {
   void _setupDeviceStateListener(BluetoothDevice device) {
     _connectionSubscription?.cancel();
     _connectionSubscription = device.connectionState.listen((state) {
-      print('Connection state changed: $state');
-      print('Current time: ${DateTime.now()}');
-      print('Last successful command time: $_lastCommandTime');
+      // print('Connection state changed: $state');
+      // print('Current time: ${DateTime.now()}');
+      // print('Last successful command time: $_lastCommandTime');
       if (state == BluetoothConnectionState.disconnected) {
-        print('Device disconnected. Device ID: ${device.remoteId}');
+        // print('Device disconnected. Device ID: ${device.remoteId}');
         _keepAliveTimer?.cancel();
         _handleDisconnection();
       }
@@ -408,7 +416,7 @@ class GoveeBluetoothService {
     try {
       await _writeCharacteristic!.write(command, withoutResponse: true);
       _lastCommandTime = DateTime.now();
-      print('GoveeBluetoothService: Command sent successfully');
+      // print('GoveeBluetoothService: Command sent successfully');
     } catch (e) {
       print('GoveeBluetoothService: Error sending command: $e');
       _isConnected = false;
@@ -416,7 +424,7 @@ class GoveeBluetoothService {
       if (_isConnected && _writeCharacteristic != null) {
         try {
 await _writeCharacteristic!.write(command, withoutResponse: true);
-          print('GoveeBluetoothService: Command sent successfully after reconnection');
+          // print('GoveeBluetoothService: Command sent successfully after reconnection');
         } catch (e) {
           print('GoveeBluetoothService: Error sending command after reconnection: $e');
         }
@@ -428,7 +436,7 @@ await _writeCharacteristic!.write(command, withoutResponse: true);
     print('GoveeBluetoothService: Received weather event - Type: $eventType, Data: $eventData');
     
     if (!_isConnected) {
-      print('GoveeBluetoothService: Not connected, attempting to connect...');
+      // print('GoveeBluetoothService: Not connected, attempting to connect...');
       await _connectToDevice();
       if (!_isConnected) {
         print('GoveeBluetoothService: Failed to connect to device');

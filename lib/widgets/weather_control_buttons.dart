@@ -15,7 +15,7 @@ class WeatherControlButtons extends StatelessWidget {
   });
 
   // Helper method to call both services
-  Future<void> _handleBothServices(WeatherEvent event, String status) async {
+  Future<void> _handleBothServices(WeatherEvent event, dynamic status) async {
     await goveeBluetoothService.handleWeatherEvent(event, status);
     await goveeService.handleEvent(event, status);
   }
@@ -24,6 +24,10 @@ class WeatherControlButtons extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
+        const Text('Weather Events', 
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)
+        ),
+        const SizedBox(height: 10),
         ElevatedButton(
           onPressed: () => _handleBothServices(
             WeatherEvent.weatherUpdate,
@@ -51,6 +55,41 @@ class WeatherControlButtons extends StatelessWidget {
             'dry',
           ),
           child: const Text('Weather Dry'),
+        ),
+        const SizedBox(height: 20),
+        const Text('Status Events', 
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)
+        ),
+        const SizedBox(height: 10),
+        ElevatedButton(
+          onPressed: () => _handleBothServices(
+            WeatherEvent.statusChange,
+            {'new': 'running'},
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.green,
+          ),
+          child: const Text('Running'),
+        ),
+        ElevatedButton(
+          onPressed: () => _handleBothServices(
+            WeatherEvent.statusChange,
+            {'new': 'restarting'},
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.orange,
+          ),
+          child: const Text('Restarting'),
+        ),
+        ElevatedButton(
+          onPressed: () => _handleBothServices(
+            WeatherEvent.statusChange,
+            {'new': 'suspended'},
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red,
+          ),
+          child: const Text('Suspended'),
         ),
       ],
     );

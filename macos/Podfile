@@ -1,5 +1,4 @@
 platform :osx, '10.14'
-
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
@@ -23,14 +22,13 @@ def flutter_root
 end
 
 require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
-
 flutter_macos_podfile_setup
 
 target 'Runner' do
   use_frameworks!
   use_modular_headers!
-
   flutter_install_all_macos_pods File.dirname(File.realpath(__FILE__))
+
   target 'RunnerTests' do
     inherit! :search_paths
   end
@@ -39,5 +37,15 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_macos_build_settings(target)
+    
+    # Add deployment target settings for all targets
+    target.build_configurations.each do |config|
+      config.build_settings['MACOSX_DEPLOYMENT_TARGET'] = '10.14'
+      
+      # Specific handling for Protobuf target
+      if target.name == 'Protobuf'
+        config.build_settings['MACOSX_DEPLOYMENT_TARGET'] = '10.14'
+      end
+    end
   end
 end
