@@ -56,7 +56,7 @@ class GoveeBluetoothService {
         print('Error in keepalive timer: $e');
         timer.cancel();
         // Attempt to restart the timer after a delay if still connected
-        Future.delayed(Duration(seconds: 5), () async {
+        Future.delayed(const Duration(seconds: 5), () async {
           if (await _checkConnectionStatus()) {
             _startKeepAliveTimer();
           }
