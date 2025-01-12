@@ -34,11 +34,13 @@ class HomeScreen extends StatelessWidget {
                 style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
             ),
-            const SizedBox(height: 30),
-            ElevatedButton(
-              onPressed: serverService.stopServer,
-              child: const Text('Stop Server'),
-            ),
+            const SizedBox(height: 20),
+            const Text('Server IP: ${ServerService.SERVER_IP}', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),),
+            // const SizedBox(height: 30),
+            // ElevatedButton(
+            //   onPressed: serverService.stopServer,
+            //   child: const Text('Stop Server'),
+            // ),
             const SizedBox(height: 20),
             WeatherControlButtons(
               goveeService: goveeService,
