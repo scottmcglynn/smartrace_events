@@ -11,7 +11,7 @@ class GoveeBluetoothService {
   static const String GOVEE_SERVICE_UUID = "00010203-0405-0607-0809-0a0b0c0d1910";
   static const String GOVEE_CHARACTERISTIC_UUID = "00010203-0405-0607-0809-0a0b0c0d2b11";
   static const String DEVICE_NAME_PATTERN = "ihoment_H613E";
-  DateTime? _lastCommandTime;
+  // DateTime? _lastCommandTime;
   BluetoothDevice? _targetDevice;
   BluetoothCharacteristic? _writeCharacteristic;
   bool _isConnected = false;
@@ -415,7 +415,7 @@ class GoveeBluetoothService {
 
     try {
       await _writeCharacteristic!.write(command, withoutResponse: true);
-      _lastCommandTime = DateTime.now();
+      // _lastCommandTime = DateTime.now();
       // print('GoveeBluetoothService: Command sent successfully');
     } catch (e) {
       print('GoveeBluetoothService: Error sending command: $e');
