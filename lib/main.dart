@@ -56,7 +56,7 @@ class MyApp extends StatelessWidget {
       home: HomeScreen(
         serverService: serverService,
         goveeService: goveeService,
-        goveeBluetoothService: goveeBluetoothService,  // Added this line
+        goveeBluetoothService: goveeBluetoothService,
       ),
     );
   }
