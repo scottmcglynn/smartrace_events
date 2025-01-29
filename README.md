@@ -13,4 +13,6 @@ The code for the H7020 works via LAN and should work for any Govee RGB lights on
 
 On startup, the system will scan your LAN and look for a Govee device on it and initialize commununication with it if found. It will scan your network ports for a suitable local IP and display this in the UI. Use this IP in Smartrace for the data interface settings. 
 
+The buttons in the UI will trigger the lights the same as the weather/track events so you can troubleshoot your system without waiting for random weather events. The debug console also displays a ton of information. Uncomment some print statements to see even more.
+
 While this project can be compiled as is for MacOS, Windows, iOS, Android, and Linux, the details of setting each one up are beyond the scope of this help file but many resources are available at flutter.dev and elsewhere. You will likely need to set some specific Bluetooth permissions in your build files for it to complie with BT functionality.
