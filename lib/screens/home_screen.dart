@@ -1,11 +1,10 @@
-// lib/screens/home_screen.dart
 import 'package:flutter/material.dart';
 import '../services/govee_service.dart';
 import '../services/server_service.dart';
 import '../services/govee_bluetooth_service.dart';
 import '../widgets/weather_control_buttons.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   final GoveeService goveeService;
   final ServerService serverService;
   final GoveeBluetoothService goveeBluetoothService;
@@ -18,6 +17,11 @@ class HomeScreen extends StatelessWidget {
   });
 
   @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Govee Light Control Server')),
@@ -28,23 +32,27 @@ class HomeScreen extends StatelessWidget {
             const Text('Govee Light IP:'),
             const SizedBox(height: 20),
             ValueListenableBuilder<String>(
-              valueListenable: goveeService.lightIpNotifier,
+              valueListenable: widget.goveeService.lightIpNotifier,
               builder: (context, ip, _) => Text(
                 ip,
                 style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
             ),
             const SizedBox(height: 20),
-            const Text('Server IP: ${ServerService.SERVER_IP}', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),),
-            // const SizedBox(height: 30),
-            // ElevatedButton(
-            //   onPressed: serverService.stopServer,
-            //   child: const Text('Stop Server'),
-            // ),
+            StreamBuilder<String>(
+              stream: Stream.periodic(const Duration(seconds: 1))
+                .map((_) => widget.serverService.currentAddress ?? 'Server not running'),
+              builder: (context, snapshot) {
+                return Text(
+                  'Server IP: ${snapshot.data ?? 'Loading...'}',
+                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                );
+              },
+            ),
             const SizedBox(height: 20),
             WeatherControlButtons(
-              goveeService: goveeService,
-              goveeBluetoothService: goveeBluetoothService,
+              goveeService: widget.goveeService,
+              goveeBluetoothService: widget.goveeBluetoothService,
             ),
           ],
         ),

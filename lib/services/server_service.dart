@@ -1,5 +1,3 @@
-// lib/services/server_service.dart
-
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -11,15 +9,44 @@ class ServerService {
   final GoveeService goveeService;
   final GoveeBluetoothService goveeBluetoothService;
   HttpServer? _server;
-  
-  // Server configuration
-  static const String SERVER_IP = '192.168.68.64';
   static const int SERVER_PORT = 8080;
 
   ServerService({
     required this.goveeService,
     required this.goveeBluetoothService,
   });
+
+  /// Detects the local IP address of the device
+  Future<String> _detectLocalIP() async {
+    try {
+      final interfaces = await NetworkInterface.list(
+        includeLinkLocal: false,
+        type: InternetAddressType.IPv4,
+      );
+
+      // Filter out localhost and docker interfaces
+      final validInterfaces = interfaces.where((interface) {
+        return !interface.name.contains('docker') && 
+               !interface.name.contains('lo');
+      });
+
+      for (var interface in validInterfaces) {
+        for (var addr in interface.addresses) {
+          // Look for a valid local network IP
+          if (addr.address.startsWith('192.168.') || 
+              addr.address.startsWith('10.') || 
+              addr.address.startsWith('172.')) {
+            return addr.address;
+          }
+        }
+      }
+
+      throw Exception('No valid local network IP address found');
+    } catch (e) {
+      print('Error detecting local IP: $e');
+      throw Exception('Failed to detect local IP address: $e');
+    }
+  }
 
   Future<void> startServer() async {
     if (_server != null) {
@@ -28,9 +55,9 @@ class ServerService {
     }
 
     try {
-      _server = await HttpServer.bind(InternetAddress(SERVER_IP), SERVER_PORT);
-      print('Server running on http://$SERVER_IP:$SERVER_PORT/');
-
+      final localIP = await _detectLocalIP();
+      _server = await HttpServer.bind(InternetAddress(localIP), SERVER_PORT);
+      print('Server running on http://$localIP:$SERVER_PORT/');
       _server?.listen(_handleRequest);
     } catch (e) {
       print('Error starting server: $e');
@@ -61,9 +88,8 @@ class ServerService {
         final eventType = WeatherEvent.fromString(jsonData['event_type']);
         final eventData = jsonData['event_data'];
 
-        // Handle the event using both services
         await _handleWeatherEvent(eventType, eventData);
-
+        
         request.response
           ..statusCode = HttpStatus.ok
           ..headers.contentType = ContentType.json
@@ -90,20 +116,18 @@ class ServerService {
           'message': 'Only POST requests are supported',
         }));
     }
-
+    
     await request.response.close();
   }
 
   Future<void> _handleWeatherEvent(WeatherEvent eventType, dynamic eventData) async {
     print('ServerService: Handling weather event - Type: $eventType, Data: $eventData');
-    
-    // Handle UDP service
+
     print('ServerService: Sending event to UDP service...');
     await goveeService.handleEvent(eventType, eventData).catchError((e) {
       print('Error handling UDP event: $e');
     });
 
-    // Handle Bluetooth service
     print('ServerService: Sending event to Bluetooth service...');
     try {
       await goveeBluetoothService.handleWeatherEvent(eventType, eventData);
@@ -120,4 +144,10 @@ class ServerService {
   }
 
   bool get isRunning => _server != null;
+
+  /// Returns the current server address if running
+  String? get currentAddress {
+    if (_server == null) return null;
+    return '${_server?.address.address}:${_server?.port}';
+  }
 }
