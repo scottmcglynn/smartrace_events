@@ -123,11 +123,6 @@ class ServerService {
   Future<void> _handleWeatherEvent(WeatherEvent eventType, dynamic eventData) async {
     print('ServerService: Handling weather event - Type: $eventType, Data: $eventData');
 
-    print('ServerService: Sending event to UDP service...');
-    await goveeService.handleEvent(eventType, eventData).catchError((e) {
-      print('Error handling UDP event: $e');
-    });
-
     print('ServerService: Sending event to Bluetooth service...');
     try {
       await goveeBluetoothService.handleWeatherEvent(eventType, eventData);
@@ -135,6 +130,13 @@ class ServerService {
     } catch (e) {
       print('Error handling Bluetooth event: $e');
     }
+    
+    print('ServerService: Sending event to UDP service...');
+    await goveeService.handleEvent(eventType, eventData).catchError((e) {
+      print('Error handling UDP event: $e');
+    });
+
+
   }
 
   Future<void> stopServer() async {
