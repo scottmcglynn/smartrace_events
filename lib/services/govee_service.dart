@@ -13,7 +13,8 @@ class GoveeService {
   static const int portReceive = 4002;
   static const String multicastAddress = '239.255.255.250';
 
-  final ValueNotifier<String> lightIpNotifier = ValueNotifier<String>('Initializing...');
+  final ValueNotifier<String> lightIpNotifier =
+      ValueNotifier<String>('Initializing...');
   final AudioService _audioService = AudioService();
   String _trackevent = 'events.weather_change';
   String _trackstatus = 'dry';
@@ -43,15 +44,17 @@ class GoveeService {
     });
 
     print('Sending scan command to discover Govee lights...');
-    
+
     try {
       // Create a UDP socket to send the scan command
-      final sendSocket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
+      final sendSocket =
+          await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
       sendSocket.send(utf8.encode(command), multicastAddr, portSend);
       sendSocket.close();
 
       // Create a UDP socket to listen for responses
-      final receiveSocket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, portReceive);
+      final receiveSocket =
+          await RawDatagramSocket.bind(InternetAddress.anyIPv4, portReceive);
       print('Listening for responses on port $portReceive...');
 
       final completer = Completer<String>();
@@ -122,7 +125,7 @@ class GoveeService {
   Future<void> _handleWeatherUpdate(String status) async {
     _trackevent = 'events.weather_update';
     _trackstatus = status;
-    
+
     switch (status) {
       case 'about_to_rain':
         await sendGoveeColorCommand(255, 0, 255); // Purple
@@ -130,13 +133,17 @@ class GoveeService {
       case 'about_to_dry_up':
         await sendGoveeColorCommand(0, 255, 0); // Green
         break;
+      case 'dry':
+        await sendGoveeColorCommand(255, 255, 255); // White
+        await _audioService.stopRainSound();
+        break;
     }
   }
 
   Future<void> _handleWeatherChange(String status) async {
     _trackevent = 'events.weather_change';
     _trackstatus = status;
-    
+
     switch (status) {
       case 'wet':
         await sendGoveeColorCommand(0, 10, 255); // Blue
@@ -153,11 +160,11 @@ class GoveeService {
     if (status['new'] == 'suspended') {
       await sendGoveeColorCommand(255, 0, 0); // Red
     } else if (status['new'] == 'running' || status['new'] == 'restarting') {
-      if (_trackevent.isNotEmpty && 
-          (_trackstatus == 'about_to_rain' || 
-           _trackstatus == 'about_to_dry_up' || 
-           _trackstatus == 'wet' || 
-           _trackstatus == 'dry')) {
+      if (_trackevent.isNotEmpty &&
+          (_trackstatus == 'about_to_rain' ||
+              _trackstatus == 'about_to_dry_up' ||
+              _trackstatus == 'wet' ||
+              _trackstatus == 'dry')) {
         await handleEvent(WeatherEvent.fromString(_trackevent), _trackstatus);
       }
     }
@@ -180,7 +187,8 @@ class GoveeService {
         }
       });
 
-      final sendSocket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
+      final sendSocket =
+          await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
       sendSocket.send(utf8.encode(command), InternetAddress(lightIp), portSend);
       sendSocket.close();
       print('Sent color command to Govee light: $command');
